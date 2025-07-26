@@ -1,11 +1,13 @@
-<x-app-layout>
-    <x-slot name="header">
-        <h2 class="text-2xl font-bold text-blue-700">
-            📝 Admin Posting Page
-        </h2>
-    </x-slot>
+@extends('layouts.admin')
 
-    <div class="grid gap-6 p-6 bg-white rounded shadow">
+@section('title', 'Admin Posting')
+
+@section('content')
+
+@includeIf('admin.partials.navbar')
+
+<div class="grid gap-6 p-6 bg-white rounded shadow">
+
 
         {{-- ✅ Carousel Upload --}}
         <div class="border p-4 rounded">
@@ -103,5 +105,7 @@
 </div>
 
 
-    </div>
-</x-app-layout>
+</div>
+
+@endsection
+

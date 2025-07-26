@@ -74,7 +74,10 @@ Route::prefix('driver')->group(function () {
 
 Route::middleware('auth.driver')->group(function () {
     Route::get('/send-location', function () {
-        return view('driver.send-location');
+        $driver = auth('driver')->user();
+        return view('driver.send-location', [
+            'ambulanceId' => $driver->ambulance_id ?? null,
+        ]);
     });
 });
 
@@ -94,3 +97,61 @@ Route::prefix('admin/ambulances')->middleware(['auth'])->group(function () {
     Route::get('/', [AmbulanceController::class, 'index'])->name('admin.ambulances.index');
     Route::post('/store', [AmbulanceController::class, 'store'])->name('admin.ambulances.store');
 });
+
+
+use Illuminate\Http\Request;
+
+// POST /admin/ambulance/{id}/set-destination
+Route::post('/admin/ambulance/{id}/set-destination', function ($id, Illuminate\Http\Request $request) {
+    $amb = \App\Models\Ambulance::findOrFail($id);
+    $amb->destination_latitude = $request->latitude;
+    $amb->destination_longitude = $request->longitude;
+    $amb->status = 'Out';
+    $amb->save();
+
+    return response()->json(['success' => true]);
+});
+
+// POST /admin/ambulance/{id}/clear-destination
+Route::post('/admin/ambulance/{id}/clear-destination', function ($id) {
+    $amb = \App\Models\Ambulance::findOrFail($id);
+    $amb->destination_latitude = null;
+    $amb->destination_longitude = null;
+    $amb->status = 'Available';
+    $amb->save();
+
+    return response()->json(['success' => true]);
+});
+
+Route::post('/admin/ambulance/{id}/set-destination', [AmbulanceController::class, 'setDestination']);
+
+Route::post('/admin/gps/set-destination', [GpsController::class, 'setDestination'])->name('admin.gps.set-destination');
+
+
+Route::get('/check-db', function () {
+    return DB::connection()->getDatabaseName();
+});
+
+Route::post('/admin/ambulance/{id}/clear-destination', [AmbulanceController::class, 'clearDestination']);
+
+// Get destination for ambulance
+Route::get('/driver/ambulance/{id}/destination', function ($id) {
+    $amb = \App\Models\Ambulance::findOrFail($id);
+    return response()->json([
+        'destination_latitude' => $amb->destination_latitude,
+        'destination_longitude' => $amb->destination_longitude
+    ]);
+});
+
+// Arrived — clear destination + set status = Available
+Route::post('/driver/ambulance/{id}/arrived', function ($id) {
+    $ambulance = \App\Models\Ambulance::findOrFail($id);
+    $ambulance->destination_latitude = null;
+    $ambulance->destination_longitude = null;
+    $ambulance->status = 'Available';
+    $ambulance->destination_updated_at = now();
+    $ambulance->save();
+
+    return response()->json(['success' => true]);
+});
+

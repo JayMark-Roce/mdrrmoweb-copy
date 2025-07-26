@@ -4,10 +4,11 @@
             MDRRMO Admin
         </div>
         <div class="space-x-4">
-            <a href="{{ url('/admin/posting') }}" class="hover:underline">Posting</a>
-            <a href="{{ url('/admin/gps') }}" class="hover:underline">GPS Tracker</a>
-            <a href="{{ url('/admin/ambulances') }}" class="hover:underline">Ambulances</a>
-            <a href="{{ url('/admin/drivers') }}" class="hover:underline">Drivers</a>
+        <li>    <a href="{{ url('dashboard') }}" class="hover:underline">Dashboard</a>           </li>
+        <li>    <a href="{{ url('/admin/posting') }}" class="hover:underline">Posting</a>           </li>
+        <li>    <a href="{{ url('/admin/gps') }}" class="hover:underline">GPS Tracker</a>           </li>
+        <li>    <a href="{{ url('/admin/ambulances') }}" class="hover:underline">Ambulances</a></li>
+        <li>    <a href="{{ url('/admin/drivers') }}" class="hover:underline">Drivers</a>           </li>
         </div>
     </div>
 </nav>

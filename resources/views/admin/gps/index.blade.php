@@ -6,8 +6,26 @@
 
 @includeIf('admin.partials.navbar')
 
+<head>
+    <meta charset="UTF-8">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+</head>
+
 <div class="container p-4">
     <h2 class="text-2xl font-bold mb-4">Ambulance GPS Tracking</h2>
+
+    {{-- Select Ambulance --}}
+    <div class="mb-4">
+        <label for="ambulance-select" class="font-semibold text-gray-700">🚑 Select Ambulance:</label>
+        <select id="ambulance-select" class="border p-2 rounded w-full">
+            <option value="">-- Choose an ambulance --</option>
+            @foreach ($ambulances as $ambulance)
+                <option value="{{ $ambulance->id }}">{{ $ambulance->name }} (ID: {{ $ambulance->id }})</option>
+            @endforeach
+        </select>
+    </div>
+
+
 
     {{-- MAP --}}
     <div id="map" class="rounded shadow mb-6" style="height: 500px; width: 100%;"></div>
@@ -24,41 +42,32 @@
                     <th class="px-4 py-2">Longitude</th>
                     <th class="px-4 py-2">Last Updated</th>
                     <th class="px-4 py-2">Status</th>
+                    <th class="px-4 py-2">Action</th>
                 </tr>
             </thead>
-            <tbody>
-                @forelse ($ambulances as $index => $amb)
-                    <tr class="border-t">
-                        <td class="px-4 py-2">{{ $index + 1 }}</td>
-                        <td class="px-4 py-2 font-medium">{{ $amb->name }}</td>
-                        <td class="px-4 py-2">{{ $amb->latitude ?? 'N/A' }}</td>
-                        <td class="px-4 py-2">{{ $amb->longitude ?? 'N/A' }}</td>
-                        <td class="px-4 py-2">{{ $amb->updated_at->format('M d, Y h:i A') }}</td>
-                        <td class="px-4 py-2">
-                            <span class="px-2 py-1 rounded text-white 
-                                @if($amb->status === 'Available') bg-green-500 
-                                @elseif($amb->status === 'Out') bg-yellow-500 
-                                @else bg-red-500 
-                                @endif">
-                                {{ $amb->status }}
-                            </span>
-                        </td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="6" class="text-center py-4 text-gray-500">No ambulance data yet.</td>
-                    </tr>
-                @endforelse
-            </tbody>
+            <tbody></tbody>
         </table>
     </div>
+
+
+        {{-- Notifications --}}
+    <div id="notification-feed" class="bg-white p-4 rounded shadow mb-4 max-h-70 overflow-y-auto">
+        <h3 class="text-lg font-semibold mb-2">📢 Notifications</h3>
+        <ul id="notifications" class="space-y-2 text-sm text-gray-800">
+            <!-- Messages will appear here -->
+        </ul>
+    </div>
+
+
+    
 </div>
+
+
 
 {{-- Leaflet CSS & JS --}}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-{{-- LIVE GPS SCRIPT --}}
 <script>
     var map = L.map('map').setView([14.5995, 120.9842], 12);
 
@@ -66,9 +75,10 @@
         attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
-    let markers = {};     // { ambulance_id: marker }
-    let trails = {};      // { ambulance_id: polyline }
-    let positions = {};   // { ambulance_id: [ [lat, lng], [lat, lng], ... ] }
+    let markers = {};
+    let trails = {};
+    let positions = {};
+    let destMarkers = {};
 
     const ambulanceIcon = L.icon({
         iconUrl: 'https://cdn-icons-png.flaticon.com/512/843/843313.png',
@@ -77,37 +87,45 @@
         popupAnchor: [0, -40]
     });
 
+    const destIcon = L.icon({
+        iconUrl: 'https://cdn-icons-png.flaticon.com/128/684/684908.png',
+        iconSize: [30, 30],
+        iconAnchor: [15, 30],
+        popupAnchor: [0, -30]
+    });
+
+    let selectedAmbulanceId = null;
+    document.getElementById('ambulance-select').addEventListener('change', function () {
+        selectedAmbulanceId = this.value;
+    });
+
     function fetchAmbulanceData() {
         fetch("{{ route('admin.gps.data') }}")
             .then(response => response.json())
             .then(data => {
-                data.forEach(amb => {
+                const tableBody = document.querySelector("tbody");
+                tableBody.innerHTML = "";
+
+                if (!window.displayedNotifications) window.displayedNotifications = {};
+
+                data.forEach((amb, index) => {
+                    // --- GPS marker + trail ---
                     if (amb.latitude && amb.longitude) {
                         let latLng = [amb.latitude, amb.longitude];
 
-                        // Store path history
-                        if (!positions[amb.id]) {
-                            positions[amb.id] = [];
-                        }
+                        if (!positions[amb.id]) positions[amb.id] = [];
                         positions[amb.id].push(latLng);
+                        if (positions[amb.id].length > 30) positions[amb.id].shift();
 
-                        // Limit trail length
-                        if (positions[amb.id].length > 30) {
-                            positions[amb.id].shift(); // remove oldest
-                        }
-
-                        // Update or create marker
                         if (markers[amb.id]) {
                             markers[amb.id].setLatLng(latLng);
                             markers[amb.id].setPopupContent(`<strong>${amb.name}</strong><br>Status: ${amb.status}`);
                         } else {
-                            let marker = L.marker(latLng, { icon: ambulanceIcon })
+                            markers[amb.id] = L.marker(latLng, { icon: ambulanceIcon })
                                 .addTo(map)
                                 .bindPopup(`<strong>${amb.name}</strong><br>Status: ${amb.status}`);
-                            markers[amb.id] = marker;
                         }
 
-                        // Draw or update trail (polyline)
                         if (trails[amb.id]) {
                             trails[amb.id].setLatLngs(positions[amb.id]);
                         } else {
@@ -118,13 +136,109 @@
                             }).addTo(map);
                         }
                     }
+
+                    // --- Destination pin ---
+                    if (amb.destination_latitude && amb.destination_longitude) {
+                        const destLatLng = [amb.destination_latitude, amb.destination_longitude];
+                        if (destMarkers[amb.id]) {
+                            destMarkers[amb.id].setLatLng(destLatLng);
+                        } else {
+                            destMarkers[amb.id] = L.marker(destLatLng, { icon: destIcon })
+                                .addTo(map)
+                                .bindPopup(`📍 Destination for ${amb.name}`);
+                        }
+                    } else {
+                        if (destMarkers[amb.id]) {
+                            map.removeLayer(destMarkers[amb.id]);
+                            delete destMarkers[amb.id];
+                        }
+                    }
+
+                    // --- Notification logic ---
+                    if (amb.status === 'Available' &&
+                        amb.destination_latitude === null &&
+                        amb.destination_longitude === null) {
+                        const lastUpdated = new Date(amb.updated_at).toLocaleTimeString();
+                        const notifKey = `arrived-${amb.id}-${amb.updated_at}`;
+
+                        if (!window.displayedNotifications[notifKey]) {
+                            const notif = document.createElement('li');
+                            notif.innerHTML = `<strong>[${lastUpdated}]</strong> ✅ Ambulance <strong>${amb.name}</strong> has arrived.`;
+                            document.getElementById('notifications').prepend(notif);
+                            window.displayedNotifications[notifKey] = true;
+
+                            // Optional auto-fade
+                            setTimeout(() => notif.remove(), 15000);
+                        }
+                    }
+
+                    // --- Table row ---
+                    const row = document.createElement("tr");
+                    row.className = "border-t";
+                    row.innerHTML = `
+                        <td class="px-4 py-2">${index + 1}</td>
+                        <td class="px-4 py-2 font-medium">${amb.name}</td>
+                        <td class="px-4 py-2">${amb.latitude ?? 'N/A'}</td>
+                        <td class="px-4 py-2">${amb.longitude ?? 'N/A'}</td>
+                        <td class="px-4 py-2">${amb.updated_at}</td>
+                        <td class="px-4 py-2">
+                            <span class="px-2 py-1 rounded text-white 
+                                ${amb.status === 'Available' ? 'bg-green-500' :
+                                  amb.status === 'Out' ? 'bg-yellow-500' : 'bg-red-500'}">
+                                ${amb.status}
+                            </span>
+                        </td>
+                        <td class="px-4 py-2">
+                            <button onclick="clearDestination(${amb.id})" class="bg-red-500 text-white px-2 py-1 rounded text-xs">Clear</button>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
                 });
             });
     }
 
+    function clearDestination(id) {
+        fetch(`/admin/ambulance/${id}/clear-destination`, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            }
+        })
+        .then(res => res.json())
+        .then(() => {
+            console.log(`🧹 Destination cleared for ambulance ${id}`);
+            fetchAmbulanceData();
+        })
+        .catch(err => console.error("❌ Clear failed:", err));
+    }
+
+    map.on('click', function (e) {
+        if (!selectedAmbulanceId) {
+            alert("⚠️ Please select an ambulance first.");
+            return;
+        }
+
+        const lat = e.latlng.lat;
+        const lng = e.latlng.lng;
+
+        fetch(`/admin/ambulance/${selectedAmbulanceId}/set-destination`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            body: JSON.stringify({ latitude: lat, longitude: lng })
+        })
+        .then(res => res.json())
+        .then(data => {
+            console.log("📍 Destination set:", data);
+            fetchAmbulanceData();
+        })
+        .catch(err => console.error("❌ Set failed:", err));
+    });
+
     fetchAmbulanceData();
     setInterval(fetchAmbulanceData, 5000);
 </script>
-
 
 @endsection

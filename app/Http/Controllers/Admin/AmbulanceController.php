@@ -28,4 +28,30 @@ class AmbulanceController extends Controller
 
         return back()->with('success', 'Ambulance added successfully!');
     }
+
+
+    public function setDestination(Request $request, $id)
+{
+    $ambulance = Ambulance::findOrFail($id);
+    $ambulance->destination_latitude = $request->latitude;
+    $ambulance->destination_longitude = $request->longitude;
+    $ambulance->destination_updated_at = now();
+    $ambulance->status = 'Out';
+    $ambulance->save();
+
+    return response()->json(['success' => true]);
+}
+
+    public function clearDestination($id)
+{
+    $ambulance = Ambulance::findOrFail($id);
+    $ambulance->destination_latitude = null;
+    $ambulance->destination_longitude = null;
+    $ambulance->destination_updated_at = null;
+    $ambulance->status = 'Available';
+    $ambulance->save();
+
+    return response()->json(['success' => true]);
+}
+
 }

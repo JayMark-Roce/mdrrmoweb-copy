@@ -1,9 +1,12 @@
-<x-app-layout>
-    <x-slot name="header">
-        <h2 class="text-3xl font-bold text-blue-700">
-            MDRRMO Admin Panel
-        </h2>
-    </x-slot>
+@extends('layouts.admin')
+
+@section('title', 'Admin Posting')
+
+@section('content')
+
+@includeIf('admin.partials.navbar')
+
+<div class="grid gap-6 p-6 bg-white rounded shadow">
 
    <!-- Ambulance Billing Table -->
 <div class="mt-10 bg-white shadow rounded p-6">
@@ -33,4 +36,4 @@
     </table>
 </div>
 
-</x-app-layout>
+@endsection
