@@ -31,7 +31,7 @@ HTML
         <img src="{{ asset('image/mdrrmologo.jpg') }}" alt="Logo" class="logo-img">
     </div>
     <nav class="nav-links">
-        <a href="#carousel"><i class="fas fa-chart-pie"></i> Dashboard</a>
+        <a href="{{ url('/dashboard') }}"><i class="fas fa-chart-pie"></i> Dashboard</a>
         <a href="#mission-vision"><i class="fas fa-pen"></i> Posting</a>
         <a href="#about"><i class="fas fa-car"></i> Drivers</a>
         <div class="logout-form">
