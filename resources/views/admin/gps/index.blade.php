@@ -27,6 +27,19 @@
 
 
 
+    <!-- type location -->
+        <div class="mb-4">
+    <label for="destination-input" class="font-semibold text-gray-700">📍 Type Destination (Optional):</label>
+    <input type="text" id="destination-input" placeholder="e.g. City Hall, Barangay 12" class="border p-2 rounded w-full mb-2">
+    <ul id="suggestions" class="border bg-white rounded mt-1 shadow max-h-40 overflow-y-auto text-sm hidden z-50 absolute w-full"></ul>
+    <button onclick="searchDestination()" class="bg-blue-500 text-white px-4 py-2 rounded">
+        Find & Set Destination
+    </button>
+</div>
+
+
+
+
     {{-- MAP --}}
     <div id="map" class="rounded shadow mb-6" style="height: 500px; width: 100%;"></div>
 
@@ -239,6 +252,123 @@
 
     fetchAmbulanceData();
     setInterval(fetchAmbulanceData, 5000);
+
+
+
+    function searchDestination() {
+    const query = document.getElementById('destination-input').value;
+    if (!selectedAmbulanceId) {
+        alert("⚠️ Please select an ambulance first.");
+        return;
+    }
+    if (!query) {
+        alert("❌ Please type a destination name.");
+        return;
+    }
+
+    fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&lang=en`)
+        .then(response => response.json())
+        .then(data => {
+            if (!data.features || data.features.length === 0) {
+                alert("❌ No results found for that location.");
+                return;
+            }
+
+            // Photon gives coordinates in [lon, lat] format
+            const [lon, lat] = data.features[0].geometry.coordinates;
+
+            fetch(`/admin/ambulance/${selectedAmbulanceId}/set-destination`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                body: JSON.stringify({ latitude: lat, longitude: lon })
+            })
+            .then(res => res.json())
+            .then(data => {
+                console.log("📍 Destination set via Photon search:", data);
+                fetchAmbulanceData();
+                map.setView([lat, lon], 15); // Zoom in on found location
+            })
+            .catch(err => console.error("❌ Set failed:", err));
+        })
+        .catch(err => {
+            console.error("🛑 Geocoding error:", err);
+            alert("Something went wrong with geocoding.");
+        });
+}
+
+
+const input = document.getElementById('destination-input');
+const suggestionBox = document.getElementById('suggestions');
+
+// Autocomplete logic
+input.addEventListener('input', () => {
+    const query = input.value.trim();
+
+    if (query.length < 3) {
+        suggestionBox.innerHTML = '';
+        suggestionBox.classList.add('hidden');
+        return;
+    }
+
+    fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&lang=en&limit=5`)
+        .then(res => res.json())
+        .then(data => {
+            suggestionBox.innerHTML = '';
+            if (!data.features || data.features.length === 0) {
+                suggestionBox.classList.add('hidden');
+                return;
+            }
+
+            data.features.forEach(feature => {
+                const name = feature.properties.name || 'Unnamed location';
+                const city = feature.properties.city || '';
+                const country = feature.properties.country || '';
+                const [lon, lat] = feature.geometry.coordinates;
+
+                const li = document.createElement('li');
+                li.textContent = `${name}${city ? ', ' + city : ''}${country ? ', ' + country : ''}`;
+                li.className = 'px-3 py-2 hover:bg-blue-100 cursor-pointer';
+                li.addEventListener('click', () => {
+                    input.value = li.textContent;
+                    suggestionBox.innerHTML = '';
+                    suggestionBox.classList.add('hidden');
+
+                    // Trigger destination assignment
+                    fetch(`/admin/ambulance/${selectedAmbulanceId}/set-destination`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                        },
+                        body: JSON.stringify({ latitude: lat, longitude: lon })
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        console.log("📍 Destination set via autocomplete:", data);
+                        fetchAmbulanceData();
+                        map.setView([lat, lon], 15);
+                    })
+                    .catch(err => console.error("❌ Autocomplete set failed:", err));
+                });
+
+                suggestionBox.appendChild(li);
+            });
+
+            suggestionBox.classList.remove('hidden');
+        });
+});
+
+// Hide suggestions if clicked outside
+document.addEventListener('click', function (e) {
+    if (!input.contains(e.target) && !suggestionBox.contains(e.target)) {
+        suggestionBox.classList.add('hidden');
+    }
+});
+
+
 </script>
 
 @endsection
