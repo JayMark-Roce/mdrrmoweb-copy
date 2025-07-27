@@ -78,6 +78,37 @@ return [
             'sslmode' => 'prefer',
         ],
 
+<<<<<<< HEAD
+=======
+
+
+//         'pgsql' => [
+//     'driver' => 'pgsql',
+//     'host' => env('DB_HOST', '127.0.0.1'),
+//     'port' => env('DB_PORT', '5432'),
+//     'database' => env('DB_DATABASE', 'forge'),
+//     'username' => env('DB_USERNAME', 'forge'),
+//     'password' => env('DB_PASSWORD', ''),
+//     'charset' => 'utf8',
+//     'prefix' => '',
+//     'prefix_indexes' => true,
+//     'schema' => 'public',
+//     'sslmode' => 'require',
+// ],
+
+
+
+
+
+
+
+
+
+
+
+
+
+>>>>>>> 887899e7221396f620d0d6dad872e632d494197b
         'sqlsrv' => [
             'driver' => 'sqlsrv',
             'url' => env('DATABASE_URL'),

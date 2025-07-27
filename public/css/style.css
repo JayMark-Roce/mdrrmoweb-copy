@@ -3,8 +3,12 @@ body {
   font-family: Arial, sans-serif;
   line-height: 1.6;
   background: #fff;
+<<<<<<< HEAD
   color: #efe8e8;
   background-color: pink;
+=======
+  color: #000;
+>>>>>>> 887899e7221396f620d0d6dad872e632d494197b
 }
 
 h2 {

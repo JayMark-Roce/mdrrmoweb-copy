@@ -40,6 +40,14 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
+<<<<<<< HEAD
+=======
+                'driver' => [
+            'driver' => 'session',
+            'provider' => 'drivers',
+        ],
+
+>>>>>>> 887899e7221396f620d0d6dad872e632d494197b
     ],
 
     /*
@@ -64,6 +72,14 @@ return [
             'driver' => 'eloquent',
             'model' => App\Models\User::class,
         ],
+<<<<<<< HEAD
+=======
+                'drivers' => [
+            'driver' => 'eloquent',
+            'model' => App\Models\Driver::class,
+        ],
+
+>>>>>>> 887899e7221396f620d0d6dad872e632d494197b
 
         // 'users' => [
         //     'driver' => 'database',

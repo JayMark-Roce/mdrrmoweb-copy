@@ -10,6 +10,10 @@
 
   <!-- ✅ Your Custom CSS -->
   <link rel="stylesheet" href="{{ asset('css/style.css') }}">
+<<<<<<< HEAD
+=======
+
+>>>>>>> 887899e7221396f620d0d6dad872e632d494197b
 </head>
 
 <body>
